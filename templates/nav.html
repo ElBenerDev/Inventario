@@ -1,10 +1,42 @@
-<nav class="bg-gray-800 text-white p-4">
-    <div class="container mx-auto flex justify-between items-center">
-        <a href="/" class="text-xl font-bold">Sistema de Inventario</a>
-        <div class="space-x-4">
-            <a href="{{ url_for('gestionar_productos') }}" class="hover:text-gray-300">Productos</a>
-            <a href="{{ url_for('gestionar_clientes') }}" class="hover:text-gray-300">Clientes</a>
-            <a href="{{ url_for('gestionar_ventas') }}" class="hover:text-gray-300">Ventas</a>
+<nav class="bg-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <span class="text-white font-bold">Sistema de Inventario</span>
+                </div>
+                {% if session.get('user_id') %}
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="{{ url_for('index') }}" 
+                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                            Dashboard
+                        </a>
+                        <a href="{{ url_for('gestionar_productos') }}"
+                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                            Productos
+                        </a>
+                        <a href="{{ url_for('gestionar_clientes') }}"
+                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                            Clientes
+                        </a>
+                        <a href="{{ url_for('gestionar_ventas') }}"
+                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                            Ventas
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="hidden md:block">
+                <div class="ml-4 flex items-center md:ml-6">
+                    <span class="text-gray-300 mr-4">{{ get_current_user().username }}</span>
+                    <a href="{{ url_for('logout') }}"
+                       class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                        Cerrar Sesión
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </nav>

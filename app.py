@@ -1,17 +1,46 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from datetime import datetime
 import json
-from models import Producto, Cliente, Venta, ItemVenta
+from models import Producto, Cliente, Venta, ItemVenta, Usuario, LogAuditoria
+from auth import login_required, role_required, get_current_user, usuarios
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_del_sistema'  # Cambiar en producción
+
+# Rutas de autenticación
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        next_url = request.form.get('next', url_for('index'))
+        
+        user = next((u for u in usuarios if u.username == username), None)
+        
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            user.last_login = datetime.now()
+            flash('Bienvenido/a ' + user.username, 'success')
+            return redirect(next_url)
+        
+        flash('Usuario o contraseña incorrectos', 'error')
+    
+    return render_template('login.html', next=request.args.get('next', ''))
 
 # Almacenamiento temporal en memoria
 productos = []
 clientes = []
 ventas = []
 
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    flash('Has cerrado sesión exitosamente', 'success')
+    return redirect(url_for('login'))
+
+
 @app.route('/')
+@login_required
 def index():
     # Estadísticas básicas para el dashboard
     total_inventario = sum(p.precio_costo * p.stock for p in productos)
@@ -37,6 +66,7 @@ def index():
     return render_template('index.html', stats=stats)
 
 @app.route('/productos', methods=['GET', 'POST'])
+@login_required
 def gestionar_productos():
     if request.method == 'POST':
         try:
