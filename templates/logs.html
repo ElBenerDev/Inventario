@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs del Sistema - Sistema de Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    {% include 'nav.html' %}
+
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-6">Logs del Sistema</h1>
+
+        <!-- Filtros -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Desde</label>
+                    <input type="date" id="fecha_desde" class="w-full rounded border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Hasta</label>
+                    <input type="date" id="fecha_hasta" class="w-full rounded border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Acción</label>
+                    <select id="accion" class="w-full rounded border-gray-300">
+                        <option value="">Todas</option>
+                        <option value="login">Login</option>
+                        <option value="logout">Logout</option>
+                        <option value="crear">Crear</option>
+                        <option value="modificar">Modificar</option>
+                        <option value="eliminar">Eliminar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tabla</label>
+                    <select id="tabla" class="w-full rounded border-gray-300">
+                        <option value="">Todas</option>
+                        <option value="usuarios">Usuarios</option>
+                        <option value="productos">Productos</option>
+                        <option value="clientes">Clientes</option>
+                        <option value="ventas">Ventas</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Logs -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha y Hora
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Usuario
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acción
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Tabla
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ID Registro
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            IP
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Detalles
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for log in logs|reverse %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ log.fecha.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {% set usuario = usuarios|selectattr("id", "eq", log.usuario_id)|first %}
+                            {{ usuario.username if usuario else 'Usuario Desconocido' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                       {% if log.accion == 'crear' %}bg-green-100 text-green-800
+                                       {% elif log.accion == 'modificar' %}bg-blue-100 text-blue-800
+                                       {% elif log.accion == 'eliminar' %}bg-red-100 text-red-800
+                                       {% elif log.accion in ['login', 'logout'] %}bg-gray-100 text-gray-800
+                                       {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                {{ log.accion }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ log.tabla }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ log.registro_id }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ log.ip }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if log.datos_anteriores or log.datos_nuevos %}
+                            <button onclick="mostrarDetalles('{{ log.id }}')"
+                                    class="text-blue-600 hover:text-blue-900">
+                                Ver detalles
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal de Detalles -->
+    <div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3">
+                <h3 class="text-xl font-bold">Detalles del Log</h3>
+                <button onclick="cerrarModal()" class="text-black close-modal">&times;</button>
+            </div>
+            <div id="modal-content" class="mt-4">
+                <!-- El contenido se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Funciones para el modal
+        function mostrarDetalles(logId) {
+            const log = {{ logs|tojson|safe }}.find(l => l.id === logId);
+            if (!log) return;
+
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `
+                <div class="space-y-4">
+                    ${log.datos_anteriores ? `
+                        <div>
+                            <h4 class="font-bold text-gray-700">Datos Anteriores:</h4>
+                            <pre class="bg-gray-50 p-3 rounded mt-2 overflow-x-auto">
+                                ${JSON.stringify(log.datos_anteriores, null, 2)}
+                            </pre>
+                        </div>
+                    ` : ''}
+                    ${log.datos_nuevos ? `
+                        <div>
+                            <h4 class="font-bold text-gray-700">Datos Nuevos:</h4>
+                            <pre class="bg-gray-50 p-3 rounded mt-2 overflow-x-auto">
+                                ${JSON.stringify(log.datos_nuevos, null, 2)}
+                            </pre>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        // Cerrar modal con Escape
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                cerrarModal();
+            }
+        });
+
+        // Filtros
+        document.getElementById('fecha_desde').addEventListener('change', aplicarFiltros);
+        document.getElementById('fecha_hasta').addEventListener('change', aplicarFiltros);
+        document.getElementById('accion').addEventListener('change', aplicarFiltros);
+        document.getElementById('tabla').addEventListener('change', aplicarFiltros);
+
+        function aplicarFiltros() {
+            // Implementar la lógica de filtrado aquí
+            // Por ahora solo recarga la página
+            // location.reload();
+        }
+    </script>
+</body>
+</html>
