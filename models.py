@@ -8,13 +8,22 @@ class Producto(BaseModel):
     nombre: str
     categoria: str
     descripcion: Optional[str] = None
-    precio: float
+    precio_costo: float  # Nuevo campo para el costo
+    precio_venta: float  # Renombramos precio a precio_venta
     stock: int
     stock_minimo: int = 0
     unidad_medida: str
     ubicacion: Optional[str] = None
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
+
+    @property
+    def valor_inventario(self) -> float:
+        return self.precio_costo * self.stock
+
+    @property
+    def ganancia_potencial(self) -> float:
+        return (self.precio_venta - self.precio_costo) * self.stock
 
 class Cliente(BaseModel):
     id: Optional[int] = None

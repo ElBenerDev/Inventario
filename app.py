@@ -14,11 +14,25 @@ ventas = []
 @app.route('/')
 def index():
     # Estadísticas básicas para el dashboard
+    total_inventario = sum(p.precio_costo * p.stock for p in productos)
+    ganancia_potencial = sum((p.precio_venta - p.precio_costo) * p.stock for p in productos)
+    
+    # Calcular ganancia real de las ventas
+    ganancia_real = sum(
+        sum((item.precio_unitario - next(
+            (p.precio_costo for p in productos if p.id == item.producto_id), 0
+        )) * item.cantidad for item in venta.items)
+        for venta in ventas
+    )
+    
     stats = {
         'total_productos': len(productos),
         'total_clientes': len(clientes),
         'total_ventas': len(ventas),
-        'productos_sin_stock': len([p for p in productos if p.stock <= p.stock_minimo])
+        'productos_sin_stock': len([p for p in productos if p.stock <= p.stock_minimo]),
+        'total_inventario': total_inventario,
+        'ganancia_potencial': ganancia_potencial,
+        'ganancia_real': ganancia_real
     }
     return render_template('index.html', stats=stats)
 
@@ -32,7 +46,8 @@ def gestionar_productos():
                 nombre=request.form['nombre'],
                 categoria=request.form['categoria'],
                 descripcion=request.form['descripcion'],
-                precio=float(request.form['precio']),
+                precio_costo=float(request.form['precio_costo']),
+                precio_venta=float(request.form['precio_venta']),
                 stock=int(request.form['stock']),
                 stock_minimo=int(request.form['stock_minimo']),
                 unidad_medida=request.form['unidad_medida'],
@@ -44,7 +59,23 @@ def gestionar_productos():
             flash(f'Error al agregar producto: {str(e)}', 'error')
         return redirect(url_for('gestionar_productos'))
     
-    return render_template('productos.html', productos=productos)
+    # Calcular totales
+    total_inventario = sum(p.precio_costo * p.stock for p in productos)
+    ganancia_potencial = sum((p.precio_venta - p.precio_costo) * p.stock for p in productos)
+    
+    # Calcular ganancia real de las ventas
+    ganancia_real = sum(
+        sum((item.precio_unitario - next(
+            (p.precio_costo for p in productos if p.id == item.producto_id), 0
+        )) * item.cantidad for item in venta.items)
+        for venta in ventas
+    )
+    
+    return render_template('productos.html', 
+                         productos=productos,
+                         total_inventario=total_inventario,
+                         ganancia_potencial=ganancia_potencial,
+                         ganancia_real=ganancia_real)
 
 @app.route('/producto/<int:id>', methods=['DELETE'])
 def eliminar_producto(id):
@@ -78,7 +109,19 @@ def gestionar_ventas():
     if request.method == 'POST':
         try:
             data = request.json
-            items = [ItemVenta(**item) for item in data['items']]
+            items = []
+            
+            # Crear items de venta usando el precio de venta del producto
+            for item_data in data['items']:
+                producto = next((p for p in productos if p.id == item_data['producto_id']), None)
+                if producto:
+                    item = ItemVenta(
+                        producto_id=producto.id,
+                        cantidad=item_data['cantidad'],
+                        precio_unitario=producto.precio_venta,  # Usar precio de venta
+                        subtotal=producto.precio_venta * item_data['cantidad']
+                    )
+                    items.append(item)
             
             venta = Venta(
                 id=len(ventas) + 1,
@@ -118,7 +161,8 @@ if __name__ == '__main__':
         codigo="P001",
         nombre="Producto Demo",
         categoria="General",
-        precio=100.00,
+        precio_costo=80.00,  # Precio de costo
+        precio_venta=100.00,  # Precio de venta
         stock=50,
         stock_minimo=10,
         unidad_medida="unidad"
