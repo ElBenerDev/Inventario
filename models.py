@@ -79,3 +79,15 @@ class LogAuditoria(BaseModel):
     datos_nuevos: Optional[dict] = None
     fecha: datetime = datetime.now()
     ip: str
+    
+class Notificacion(BaseModel):
+    id: Optional[int] = None
+    tipo: str  # stock_bajo, vencimiento_producto, resumen_diario, cambio_precio, etc.
+    titulo: str
+    mensaje: str
+    destinatarios: List[int]  # Lista de IDs de usuarios
+    leida: bool = False
+    fecha_creacion: datetime = datetime.now()
+    fecha_lectura: Optional[datetime] = None
+    urgente: bool = False
+    datos_adicionales: Optional[dict] = None

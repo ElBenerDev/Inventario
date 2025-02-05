@@ -3,17 +3,19 @@ from datetime import datetime
 from models import Usuario, Producto, Cliente, Venta, ItemVenta, LogAuditoria
 from session_manager import SessionManager, login_required, role_required
 from werkzeug.security import generate_password_hash
+from notifications import NotificationSystem
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_del_sistema'  # Cambiar en producción
 
-# Almacenamiento temporal en memoria - Variables globales
-global usuarios, productos, clientes, ventas, logs_auditoria
+# Inicialización de variables globales
+global usuarios, productos, clientes, ventas, logs_auditoria, notification_system
 usuarios = []
 productos = []
 clientes = []
 ventas = []
 logs_auditoria = []
+notification_system = NotificationSystem()
 
 # Crear usuario admin inicial
 admin_user = Usuario(
@@ -29,6 +31,38 @@ admin_user = Usuario(
     is_active=True
 )
 usuarios.append(admin_user)
+
+@app.context_processor
+def utility_processor():
+    def get_unread_notifications():
+        if SessionManager.get_current_user_id():
+            return notification_system.get_user_notifications(SessionManager.get_current_user_id())
+        return []
+    
+    return {
+        'get_current_username': SessionManager.get_current_username,
+        'get_current_user_role': SessionManager.get_current_user_role,
+        'get_current_user_id': SessionManager.get_current_user_id,
+        'notification_system': notification_system,
+        'get_unread_notifications': get_unread_notifications
+    }
+
+
+@app.route('/notificaciones')
+@login_required
+def ver_notificaciones():
+    user_id = SessionManager.get_current_user_id()
+    include_read = request.args.get('include_read', 'false').lower() == 'true'
+    notificaciones = notification_system.get_user_notifications(user_id, include_read)
+    return render_template('notificaciones.html', notificaciones=notificaciones)
+
+@app.route('/notificaciones/marcar-leida/<int:notification_id>', methods=['POST'])
+@login_required
+def marcar_notificacion_leida(notification_id):
+    user_id = SessionManager.get_current_user_id()
+    success = notification_system.mark_as_read(notification_id, user_id)
+    return jsonify({'success': success})
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -192,6 +226,33 @@ def eliminar_producto(id):
         return jsonify({'success': True})
     
     return jsonify({'success': False, 'message': 'Producto no encontrado'}), 404
+
+@app.route('/productos/<int:id>', methods=['PUT'])
+@login_required
+@role_required(['admin', 'inventario'])
+def actualizar_producto(id):
+    producto = next((p for p in productos if p.id == id), None)
+    if not producto:
+        return jsonify({'success': False, 'message': 'Producto no encontrado'}), 404
+    
+    data = request.json
+    precio_anterior = producto.precio_venta
+    
+    # Actualizar producto
+    for key, value in data.items():
+        if hasattr(producto, key):
+            setattr(producto, key, value)
+    
+    # Si el precio cambió, crear notificación
+    if precio_anterior != producto.precio_venta:
+        notification_system.notify_price_changes(
+            producto,
+            precio_anterior,
+            [u for u in usuarios if u.role in ['admin', 'vendedor']]
+        )
+    
+    return jsonify({'success': True})
+
 
 @app.route('/clientes', methods=['GET', 'POST'])
 @login_required

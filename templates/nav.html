@@ -34,6 +34,18 @@
                             Logs
                         </a>
                         {% endif %}
+
+                        <a href="{{ url_for('ver_notificaciones') }}" class="relative">
+                            <span class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                                Notificaciones
+                            </span>
+                            {% set unread_notifications = get_unread_notifications() %}
+                            {% if unread_notifications|length > 0 %}
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                {{ unread_notifications|length }}
+                            </span>
+                            {% endif %}
+                        </a>
                     </div>
                 </div>
             </div>
