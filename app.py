@@ -4,18 +4,20 @@ from models import Usuario, Producto, Cliente, Venta, ItemVenta, LogAuditoria
 from session_manager import SessionManager, login_required, role_required
 from werkzeug.security import generate_password_hash
 from notifications import NotificationSystem
+from models import Proveedor
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_del_sistema'  # Cambiar en producción
 
 # Inicialización de variables globales
-global usuarios, productos, clientes, ventas, logs_auditoria, notification_system
+global usuarios, productos, clientes, ventas, logs_auditoria, notification_system, proveedores
 usuarios = []
 productos = []
 clientes = []
 ventas = []
 logs_auditoria = []
 notification_system = NotificationSystem()
+proveedores = []
 
 # Crear usuario admin inicial
 admin_user = Usuario(
@@ -360,6 +362,287 @@ def gestionar_ventas():
                          ventas=ventas, 
                          productos=productos, 
                          clientes=clientes)
+    
+@app.route('/proveedores', methods=['GET', 'POST'])
+@login_required
+@role_required(['admin', 'inventario'])
+def gestionar_proveedores():
+    if request.method == 'POST':
+        try:
+            # Obtener el usuario actual
+            current_user_id = SessionManager.get_current_user_id()
+            
+            # Generar código único para el proveedor (PRV001, PRV002, etc.)
+            nuevo_codigo = f"PRV{str(len(proveedores) + 1).zfill(3)}"
+            
+            # Crear nuevo proveedor
+            nuevo_proveedor = Proveedor(
+                id=len(proveedores) + 1,
+                codigo=nuevo_codigo,
+                nombre=request.form['nombre'],
+                ruc=request.form['ruc'],
+                direccion=request.form['direccion'],
+                ciudad=request.form['ciudad'],
+                pais=request.form.get('pais', 'Ecuador'),
+                telefono=request.form['telefono'],
+                email=request.form['email'],
+                sitio_web=request.form.get('sitio_web'),
+                contacto_nombre=request.form['contacto_nombre'],
+                contacto_telefono=request.form['contacto_telefono'],
+                contacto_email=request.form['contacto_email'],
+                categoria=request.form['categoria'],
+                notas=request.form.get('notas'),
+                terminos_pago=request.form['terminos_pago'],
+                limite_credito=float(request.form.get('limite_credito', 0)),
+                created_by=current_user_id,
+                updated_by=current_user_id
+            )
+            
+            # Agregar a la lista de proveedores
+            proveedores.append(nuevo_proveedor)
+            
+            # Registrar en el log de auditoría
+            log = LogAuditoria(
+                usuario_id=current_user_id,
+                accion="crear",
+                tabla="proveedores",
+                registro_id=nuevo_proveedor.id,
+                datos_nuevos=nuevo_proveedor.dict(),
+                ip=request.remote_addr
+            )
+            logs_auditoria.append(log)
+            
+            flash('Proveedor agregado exitosamente', 'success')
+            return redirect(url_for('gestionar_proveedores'))
+            
+        except ValueError as e:
+            flash(f'Error de validación: {str(e)}', 'error')
+            return redirect(url_for('gestionar_proveedores'))
+        except Exception as e:
+            flash(f'Error al crear proveedor: {str(e)}', 'error')
+            return redirect(url_for('gestionar_proveedores'))
+    
+    # Para solicitudes GET
+    return render_template('proveedores/index.html', 
+                         proveedores=proveedores,
+                         categorias_proveedores=[
+                             "Materia Prima",
+                             "Suministros",
+                             "Servicios",
+                             "Equipamiento",
+                             "Transporte",
+                             "Otros"
+                         ],
+                         terminos_pago=[
+                             "Contado",
+                             "15 días",
+                             "30 días",
+                             "45 días",
+                             "60 días",
+                             "90 días"
+                         ])
+
+@app.route('/proveedor/<int:id>', methods=['GET'])
+@login_required
+@role_required(['admin', 'inventario'])
+def obtener_proveedor(id):
+    proveedor = next((p for p in proveedores if p.id == id), None)
+    if not proveedor:
+        return jsonify({'error': 'Proveedor no encontrado'}), 404
+    
+    return jsonify(proveedor.dict())
+
+@app.route('/proveedor/<int:id>/detalle', methods=['GET'])
+@login_required
+@role_required(['admin', 'inventario'])
+def detalle_proveedor(id):
+    proveedor = next((p for p in proveedores if p.id == id), None)
+    if not proveedor:
+        flash('Proveedor no encontrado', 'error')
+        return redirect(url_for('gestionar_proveedores'))
+    
+    # Obtener productos asociados
+    productos_proveedor = [p for p in productos if p.id in proveedor.productos]
+    
+    return render_template('proveedores/detalle.html',
+                         proveedor=proveedor,
+                         productos=productos,  # Todos los productos para el modal
+                         productos_proveedor=productos_proveedor)  # Solo productos asociados
+    
+@app.route('/proveedor/<int:id>', methods=['PUT'])
+@login_required
+@role_required(['admin', 'inventario'])
+def actualizar_proveedor(id):
+    try:
+        current_user_id = SessionManager.get_current_user_id()
+        data = request.get_json()
+        
+        proveedor = next((p for p in proveedores if p.id == id), None)
+        if not proveedor:
+            return jsonify({'error': 'Proveedor no encontrado'}), 404
+
+        # Guardar datos antiguos para el log
+        datos_antiguos = proveedor.dict()
+        
+        # Actualizar campos del proveedor
+        campos_actualizables = [
+            'nombre', 'ruc', 'direccion', 'ciudad', 'pais', 
+            'telefono', 'email', 'sitio_web', 'contacto_nombre',
+            'contacto_telefono', 'contacto_email', 'categoria',
+            'notas', 'terminos_pago', 'limite_credito', 'estado'
+        ]
+        
+        for campo in campos_actualizables:
+            if campo in data:
+                setattr(proveedor, campo, data[campo])
+        
+        proveedor.updated_at = datetime.utcnow()
+        proveedor.updated_by = current_user_id
+
+        # Registrar en el log de auditoría
+        log = LogAuditoria(
+            usuario_id=current_user_id,
+            accion="actualizar",
+            tabla="proveedores",
+            registro_id=proveedor.id,
+            datos_antiguos=datos_antiguos,
+            datos_nuevos=proveedor.dict(),
+            ip=request.remote_addr
+        )
+        logs_auditoria.append(log)
+
+        return jsonify({'success': True, 'message': 'Proveedor actualizado exitosamente'})
+    
+    except ValueError as e:
+        return jsonify({'error': f'Error de validación: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error al actualizar proveedor: {str(e)}'}), 500
+
+@app.route('/proveedor/<int:id>', methods=['DELETE'])
+@login_required
+@role_required(['admin'])  # Solo administradores pueden eliminar
+def eliminar_proveedor(id):
+    try:
+        current_user_id = SessionManager.get_current_user_id()
+        proveedor = next((p for p in proveedores if p.id == id), None)
+        
+        if not proveedor:
+            return jsonify({'error': 'Proveedor no encontrado'}), 404
+
+        # Verificar si tiene órdenes de compra asociadas
+        if tiene_ordenes_compra(id):
+            return jsonify({
+                'error': 'No se puede eliminar el proveedor porque tiene órdenes de compra asociadas'
+            }), 400
+
+        # Guardar datos para el log antes de eliminar
+        datos_eliminados = proveedor.dict()
+        
+        # Eliminar el proveedor
+        proveedores.remove(proveedor)
+
+        # Registrar en el log de auditoría
+        log = LogAuditoria(
+            usuario_id=current_user_id,
+            accion="eliminar",
+            tabla="proveedores",
+            registro_id=id,
+            datos_antiguos=datos_eliminados,
+            ip=request.remote_addr
+        )
+        logs_auditoria.append(log)
+
+        return jsonify({'success': True, 'message': 'Proveedor eliminado exitosamente'})
+    
+    except Exception as e:
+        return jsonify({'error': f'Error al eliminar proveedor: {str(e)}'}), 500
+
+@app.route('/proveedor/<int:id>/productos', methods=['POST'])
+@login_required
+@role_required(['admin', 'inventario'])
+def gestionar_productos_proveedor(id):
+    try:
+        current_user_id = SessionManager.get_current_user_id()
+        data = request.get_json()
+        producto_ids = data.get('producto_ids', [])
+
+        proveedor = next((p for p in proveedores if p.id == id), None)
+        if not proveedor:
+            return jsonify({'error': 'Proveedor no encontrado'}), 404
+
+        # Guardar datos antiguos para el log
+        datos_antiguos = proveedor.dict()
+        
+        # Actualizar productos asociados
+        proveedor.productos = producto_ids
+        proveedor.updated_at = datetime.utcnow()
+        proveedor.updated_by = current_user_id
+
+        # Registrar en el log de auditoría
+        log = LogAuditoria(
+            usuario_id=current_user_id,
+            accion="actualizar_productos",
+            tabla="proveedores",
+            registro_id=proveedor.id,
+            datos_antiguos=datos_antiguos,
+            datos_nuevos=proveedor.dict(),
+            ip=request.remote_addr
+        )
+        logs_auditoria.append(log)
+
+        return jsonify({'success': True, 'message': 'Productos actualizados exitosamente'})
+    
+    except Exception as e:
+        return jsonify({'error': f'Error al actualizar productos: {str(e)}'}), 500
+
+def tiene_ordenes_compra(proveedor_id: int) -> bool:
+    """
+    Verifica si un proveedor tiene órdenes de compra asociadas
+    """
+    # Aquí iría la lógica para verificar en la base de datos
+    # Por ahora retornamos False
+    return False
+
+@app.route('/proveedores/buscar', methods=['GET'])
+@login_required
+@role_required(['admin', 'inventario'])
+def buscar_proveedores():
+    try:
+        termino = request.args.get('q', '').lower()
+        categoria = request.args.get('categoria')
+        ciudad = request.args.get('ciudad')
+        estado = request.args.get('estado')
+
+        resultados = proveedores
+
+        # Aplicar filtros
+        if termino:
+            resultados = [p for p in resultados if 
+                         termino in p.nombre.lower() or
+                         termino in p.codigo.lower() or
+                         termino in p.ruc.lower()]
+        
+        if categoria:
+            resultados = [p for p in resultados if p.categoria == categoria]
+        
+        if ciudad:
+            resultados = [p for p in resultados if p.ciudad == ciudad]
+        
+        if estado:
+            resultados = [p for p in resultados if p.estado == estado]
+
+        return jsonify([{
+            'id': p.id,
+            'codigo': p.codigo,
+            'nombre': p.nombre,
+            'ruc': p.ruc,
+            'ciudad': p.ciudad,
+            'categoria': p.categoria,
+            'estado': p.estado
+        } for p in resultados])
+
+    except Exception as e:
+        return jsonify({'error': f'Error en la búsqueda: {str(e)}'}), 500
 
 @app.route('/logs')
 @login_required

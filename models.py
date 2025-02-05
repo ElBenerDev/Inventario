@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import List, Optional, Dict
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from werkzeug.security import generate_password_hash, check_password_hash
+
 
 class Usuario(BaseModel):
     id: Optional[int] = None
@@ -91,3 +92,62 @@ class Notificacion(BaseModel):
     fecha_lectura: Optional[datetime] = None
     urgente: bool = False
     datos_adicionales: Optional[dict] = None
+    
+class Proveedor(BaseModel):
+    id: Optional[int] = None
+    codigo: str
+    nombre: str
+    ruc: str
+    direccion: str
+    ciudad: str
+    pais: str = "Ecuador"  # Valor por defecto
+    telefono: str
+    email: str
+    sitio_web: Optional[str] = None
+    contacto_nombre: str
+    contacto_telefono: str
+    contacto_email: str
+    categoria: str  # ej: "Materia Prima", "Suministros", "Servicios"
+    productos: List[int] = []  # Lista de IDs de productos
+    notas: Optional[str] = None
+    estado: str = "activo"  # activo, inactivo
+    terminos_pago: str  # ej: "30 días", "60 días", "Contado"
+    moneda: str = "USD"
+    limite_credito: float = 0.0
+    total_compras: float = 0.0
+    ultima_compra: Optional[datetime] = None
+    created_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now()
+    created_by: int
+    updated_by: int
+
+    @validator('ruc')
+    def validar_ruc(cls, v):
+        # Validación básica de RUC ecuatoriano
+        if not v.isdigit() or len(v) != 13:
+            raise ValueError('RUC debe tener 13 dígitos numéricos')
+        return v
+
+    @validator('email', 'contacto_email')
+    def validar_email(cls, v):
+        # Validación básica de email
+        if '@' not in v or '.' not in v:
+            raise ValueError('Email inválido')
+        return v
+
+    @validator('telefono', 'contacto_telefono')
+    def validar_telefono(cls, v):
+        # Limpia el número de teléfono y valida formato básico
+        v = ''.join(filter(str.isdigit, v))
+        if len(v) < 9 or len(v) > 10:
+            raise ValueError('Número de teléfono debe tener entre 9 y 10 dígitos')
+        return v
+
+    @validator('limite_credito')
+    def validar_limite_credito(cls, v):
+        if v < 0:
+            raise ValueError('El límite de crédito no puede ser negativo')
+        return v
+
+    class Config:
+        validate_assignment = True

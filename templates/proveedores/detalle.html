@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle de Proveedor - Sistema de Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+    {% include 'nav.html' %}
+
+    <div class="container mx-auto p-4">
+        <!-- Encabezado -->
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center space-x-4">
+                <a href="{{ url_for('gestionar_proveedores') }}" 
+                   class="text-gray-600 hover:text-gray-800">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+                <h1 class="text-2xl font-bold text-gray-800">
+                    {{ proveedor.nombre }}
+                    <span class="text-sm font-normal text-gray-500 ml-2">({{ proveedor.codigo }})</span>
+                </h1>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                           {% if proveedor.estado == 'activo' %}bg-green-100 text-green-800
+                           {% else %}bg-red-100 text-red-800{% endif %}">
+                    {{ proveedor.estado }}
+                </span>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="editarProveedor({{ proveedor.id }})"
+                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    <i class="fas fa-edit mr-2"></i> Editar
+                </button>
+                <button onclick="confirmarEliminar({{ proveedor.id }})"
+                        class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                    <i class="fas fa-trash mr-2"></i> Eliminar
+                </button>
+            </div>
+        </div>
+
+        <!-- Grid de información -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Información General -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Información General</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600">RUC</p>
+                        <p class="font-medium">{{ proveedor.ruc }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Categoría</p>
+                        <p class="font-medium">{{ proveedor.categoria }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Ciudad</p>
+                        <p class="font-medium">{{ proveedor.ciudad }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">País</p>
+                        <p class="font-medium">{{ proveedor.pais }}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-sm text-gray-600">Dirección</p>
+                        <p class="font-medium">{{ proveedor.direccion }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información de Contacto -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Información de Contacto</h2>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Teléfono Principal</p>
+                            <p class="font-medium">{{ proveedor.telefono }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Email Principal</p>
+                            <p class="font-medium">{{ proveedor.email }}</p>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-gray-200">
+                        <p class="text-sm font-semibold text-gray-700 mb-2">Contacto Principal</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Nombre</p>
+                                <p class="font-medium">{{ proveedor.contacto_nombre }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Teléfono</p>
+                                <p class="font-medium">{{ proveedor.contacto_telefono }}</p>
+                            </div>
+                            <div class="col-span-2">
+                                <p class="text-sm text-gray-600">Email</p>
+                                <p class="font-medium">{{ proveedor.contacto_email }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información Financiera -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Información Financiera</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600">Términos de Pago</p>
+                        <p class="font-medium">{{ proveedor.terminos_pago }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Límite de Crédito</p>
+                        <p class="font-medium">${{ "%.2f"|format(proveedor.limite_credito) }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Total Compras</p>
+                        <p class="font-medium">${{ "%.2f"|format(proveedor.total_compras) }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Última Compra</p>
+                        <p class="font-medium">
+                            {% if proveedor.ultima_compra %}
+                                {{ proveedor.ultima_compra.strftime('%Y-%m-%d') }}
+                            {% else %}
+                                Sin compras
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Productos Asociados -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Productos Asociados</h2>
+                    <button onclick="openProductosModal()"
+                            class="bg-green-500 hover:bg-green-700 text-white text-sm font-bold py-2 px-4 rounded">
+                        <i class="fas fa-plus mr-2"></i> Asociar Productos
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Código
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Nombre
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Categoría
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for producto in productos_proveedor %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ producto.codigo }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ producto.nombre }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ producto.categoria }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button onclick="desasociarProducto({{ producto.id }})"
+                                            class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-unlink"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                    No hay productos asociados
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Modal para Asociar Productos -->
+        <div id="productosModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center pb-3">
+                    <h3 class="text-xl font-bold">Asociar Productos</h3>
+                    <button onclick="closeProductosModal()" class="text-black close-modal">&times;</button>
+                </div>
+                <div class="my-4">
+                    <input type="text" id="searchProductos" 
+                           placeholder="Buscar productos..." 
+                           onkeyup="filtrarProductos()"
+                           class="w-full px-3 py-2 border rounded-md">
+                </div>
+                <div class="max-h-96 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <input type="checkbox" id="selectAll" onclick="seleccionarTodos()" class="mr-2">
+                                    Seleccionar
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Código
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Nombre
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Categoría
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="productosTableBody">
+                            {% for producto in productos %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input type="checkbox" 
+                                           value="{{ producto.id }}" 
+                                           {% if producto.id in proveedor.productos %}checked{% endif %}
+                                           class="producto-checkbox">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ producto.codigo }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ producto.nombre }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ producto.categoria }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button onclick="closeProductosModal()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">
+                        Cancelar
+                    </button>
+                    <button onclick="guardarProductosAsociados()"
+                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    
+        <script>
+            // Funciones para el modal de productos
+            function openProductosModal() {
+                document.getElementById('productosModal').classList.remove('hidden');
+            }
+    
+            function closeProductosModal() {
+                document.getElementById('productosModal').classList.add('hidden');
+            }
+    
+            function seleccionarTodos() {
+                const selectAllCheckbox = document.getElementById('selectAll');
+                const checkboxes = document.getElementsByClassName('producto-checkbox');
+                Array.from(checkboxes).forEach(checkbox => {
+                    if (!checkbox.closest('tr').style.display || checkbox.closest('tr').style.display === '') {
+                        checkbox.checked = selectAllCheckbox.checked;
+                    }
+                });
+            }
+    
+            function filtrarProductos() {
+                const searchText = document.getElementById('searchProductos').value.toLowerCase();
+                const rows = document.getElementById('productosTableBody').getElementsByTagName('tr');
+                let visibleCount = 0;
+                let totalCount = 0;
+    
+                Array.from(rows).forEach(row => {
+                    const codigo = row.cells[1].textContent.toLowerCase();
+                    const nombre = row.cells[2].textContent.toLowerCase();
+                    const categoria = row.cells[3].textContent.toLowerCase();
+                    
+                    if (codigo.includes(searchText) || 
+                        nombre.includes(searchText) || 
+                        categoria.includes(searchText)) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                    totalCount++;
+                });
+    
+                // Actualizar estado del checkbox "Seleccionar todos"
+                const selectAllCheckbox = document.getElementById('selectAll');
+                selectAllCheckbox.checked = false;
+            }
+    
+            function guardarProductosAsociados() {
+                const checkboxes = document.getElementsByClassName('producto-checkbox');
+                const productosSeleccionados = Array.from(checkboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => parseInt(cb.value));
+    
+                fetch(`/proveedor/{{ proveedor.id }}/productos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        producto_ids: productosSeleccionados
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error al guardar los productos asociados');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+    
+            function desasociarProducto(productoId) {
+                if (confirm('¿Está seguro de que desea desasociar este producto?')) {
+                    const productosActuales = {{ proveedor.productos|tojson }};
+                    const nuevosProductos = productosActuales.filter(id => id !== productoId);
+    
+                    fetch(`/proveedor/{{ proveedor.id }}/productos`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            producto_ids: nuevosProductos
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Error al desasociar el producto');
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            }
+    
+            function confirmarEliminar(id) {
+                if (confirm('¿Está seguro de que desea eliminar este proveedor? Esta acción no se puede deshacer.')) {
+                    fetch(`/proveedor/${id}`, {
+                        method: 'DELETE'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = "{{ url_for('gestionar_proveedores') }}";
+                        } else {
+                            alert('Error al eliminar el proveedor');
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            }
+    
+            function editarProveedor(id) {
+                window.location.href = `{{ url_for('gestionar_proveedores') }}?edit=${id}`;
+            }
+        </script>
+    </body>
+    </html>
