@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    {% include 'nav.html' %}
+
+    <div class="container mx-auto p-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-4 mb-4 rounded {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h1 class="text-3xl font-bold mb-6">Panel de Control</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-2">Productos</h2>
+                <p class="text-3xl text-blue-600">{{ stats.total_productos }}</p>
+                <p class="text-sm text-gray-500">Total en inventario</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-2">Stock Bajo</h2>
+                <p class="text-3xl text-yellow-600">{{ stats.productos_sin_stock }}</p>
+                <p class="text-sm text-gray-500">Productos por reordenar</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-2">Clientes</h2>
+                <p class="text-3xl text-green-600">{{ stats.total_clientes }}</p>
+                <p class="text-sm text-gray-500">Clientes registrados</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-2">Ventas</h2>
+                <p class="text-3xl text-purple-600">{{ stats.total_ventas }}</p>
+                <p class="text-sm text-gray-500">Total de ventas</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-4">Acciones Rápidas</h2>
+                <div class="space-y-2">
+                    <a href="{{ url_for('gestionar_productos') }}" class="block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-center">
+                        Nuevo Producto
+                    </a>
+                    <a href="{{ url_for('gestionar_clientes') }}" class="block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-center">
+                        Nuevo Cliente
+                    </a>
+                    <a href="{{ url_for('gestionar_ventas') }}" class="block bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 text-center">
+                        Nueva Venta
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<nav class="bg-gray-800 text-white p-4">
+    <div class="container mx-auto flex justify-between items-center">
+        <a href="/" class="text-xl font-bold">Sistema de Inventario</a>
+        <div class="space-x-4">
+            <a href="{{ url_for('gestionar_productos') }}" class="hover:text-gray-300">Productos</a>
+            <a href="{{ url_for('gestionar_clientes') }}" class="hover:text-gray-300">Clientes</a>
+            <a href="{{ url_for('gestionar_ventas') }}" class="hover:text-gray-300">Ventas</a>
+        </div>
+    </div>
+</nav>

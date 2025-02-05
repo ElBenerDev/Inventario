@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Ventas - Sistema de Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    {% include 'nav.html' %}
+
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-6">Gestión de Ventas</h1>
+
+        <!-- Formulario de venta -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-bold mb-4">Nueva Venta</h2>
+            <form id="ventaForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700">Cliente</label>
+                        <select id="cliente_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="">Seleccionar Cliente</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700">Estado</label>
+                        <select id="estado" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="completada">Completada</option>
+                            <option value="pendiente">Pendiente</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Lista de productos -->
+                <div id="productos-lista" class="space-y-2">
+                    <div class="producto-item grid grid-cols-1 md:grid-cols-5 gap-2">
+                        <select class="producto-select rounded-md border-gray-300 shadow-sm">
+                            <option value="">Seleccionar Producto</option>
+                            {% for producto in productos %}
+                            <option value="{{ producto.id }}" 
+                                    data-precio="{{ producto.precio }}"
+                                    data-stock="{{ producto.stock }}">
+                                {{ producto.nombre }} - Stock: {{ producto.stock }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <input type="number" class="cantidad rounded-md border-gray-300 shadow-sm" 
+                               placeholder="Cantidad" min="1">
+                        <input type="number" class="precio-unitario rounded-md border-gray-300 shadow-sm" 
+                               placeholder="Precio unitario" readonly>
+                        <input type="number" class="subtotal rounded-md border-gray-300 shadow-sm" 
+                               placeholder="Subtotal" readonly>
+                        <button type="button" class="eliminar-producto bg-red-500 text-white px-2 py-1 rounded">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" id="agregar-producto" 
+                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    Agregar Producto
+                </button>
+
+                <div class="border-t pt-4">
+                    <div class="text-right">
+                        <span class="font-bold">Total: $</span>
+                        <span id="total">0.00</span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-gray-700">Notas</label>
+                    <textarea id="notas" rows="3" 
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Registrar Venta
+                </button>
+            </form>
+        </div>
+
+        <!-- Historial de ventas -->
+        <div class="bg-white rounded-lg shadow overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for venta in ventas %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ venta.id }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% for cliente in clientes %}
+                                {% if cliente.id == venta.cliente_id %}
+                                    {{ cliente.nombre }}
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ venta.fecha_venta.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${{ "%.2f"|format(venta.total) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                       {% if venta.estado == 'completada' %}
+                                       bg-green-100 text-green-800
+                                       {% elif venta.estado == 'pendiente' %}
+                                       bg-yellow-100 text-yellow-800
+                                       {% else %}
+                                       bg-red-100 text-red-800
+                                       {% endif %}">
+                                {{ venta.estado }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <button class="text-blue-600 hover:text-blue-900">Ver Detalles</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ventaForm = document.getElementById('ventaForm');
+            const productosLista = document.getElementById('productos-lista');
+            const agregarProductoBtn = document.getElementById('agregar-producto');
+            const totalSpan = document.getElementById('total');
+
+            // Función para actualizar subtotales y total
+            function actualizarTotales() {
+                let total = 0;
+                document.querySelectorAll('.producto-item').forEach(item => {
+                    const cantidad = parseFloat(item.querySelector('.cantidad').value) || 0;
+                    const precioUnitario = parseFloat(item.querySelector('.precio-unitario').value) || 0;
+                    const subtotal = cantidad * precioUnitario;
+                    item.querySelector('.subtotal').value = subtotal.toFixed(2);
+                    total += subtotal;
+                });
+                totalSpan.textContent = total.toFixed(2);
+            }
+
+            // Agregar nuevo producto
+            agregarProductoBtn.addEventListener('click', function() {
+                const nuevoProducto = productosLista.children[0].cloneNode(true);
+                nuevoProducto.querySelectorAll('input').forEach(input => input.value = '');
+                productosLista.appendChild(nuevoProducto);
+                
+                // Agregar eventos al nuevo producto
+                agregarEventosProducto(nuevoProducto);
+            });
+
+            // Función para agregar eventos a un item de producto
+            function agregarEventosProducto(productoItem) {
+                const productoSelect = productoItem.querySelector('.producto-select');
+                const cantidadInput = productoItem.querySelector('.cantidad');
+                const precioUnitarioInput = productoItem.querySelector('.precio-unitario');
+                const eliminarBtn = productoItem.querySelector('.eliminar-producto');
+
+                productoSelect.addEventListener('change', function() {
+                    const option = this.options[this.selectedIndex];
+                    precioUnitarioInput.value = option.dataset.precio || '';
+                    actualizarTotales();
+                });
+
+                cantidadInput.addEventListener('input', actualizarTotales);
+
+                eliminarBtn.addEventListener('click', function() {
+                    if (productosLista.children.length > 1) {
+                        productoItem.remove();
+                        actualizarTotales();
+                    }
+                });
+            }
+
+            // Agregar eventos al primer producto
+            agregarEventosProducto(productosLista.children[0]);
+
+            // Manejar envío del formulario
+            ventaForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const items = [];
+                productosLista.querySelectorAll('.producto-item').forEach(item => {
+                    const productoId = item.querySelector('.producto-select').value;
+                    const cantidad = parseInt(item.querySelector('.cantidad').value);
+                    const precioUnitario = parseFloat(item.querySelector('.precio-unitario').value);
+                    
+                    if (productoId && cantidad && precioUnitario) {
+                        items.push({
+                            producto_id: parseInt(productoId),
+                            cantidad: cantidad,
+                            precio_unitario: precioUnitario,
+                            subtotal: cantidad * precioUnitario
+                        });
+                    }
+                });
+
+                const ventaData = {
+                    cliente_id: parseInt(document.getElementById('cliente_id').value),
+                    estado: document.getElementById('estado').value,
+                    items: items,
+                    notas: document.getElementById('notas').value
+                };
+
+                try {
+                    const response = await fetch('/ventas', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(ventaData)
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('Venta registrada exitosamente');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al procesar la venta');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

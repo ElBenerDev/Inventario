@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Productos - Sistema de Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    {% include 'nav.html' %}
+
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-6">Gestión de Productos</h1>
+
+        <!-- Formulario para agregar productos -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-bold mb-4">Agregar Nuevo Producto</h2>
+            <form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700">Código</label>
+                    <input type="text" name="codigo" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Nombre</label>
+                    <input type="text" name="nombre" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Categoría</label>
+                    <input type="text" name="categoria" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Descripción</label>
+                    <input type="text" name="descripcion"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Precio</label>
+                    <input type="number" name="precio" step="0.01" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Stock</label>
+                    <input type="number" name="stock" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Stock Mínimo</label>
+                    <input type="number" name="stock_minimo" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Unidad de Medida</label>
+                    <input type="text" name="unidad_medida" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Ubicación</label>
+                    <input type="text" name="ubicacion"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div class="md:col-span-2">
+                    <button type="submit" 
+                            class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Agregar Producto
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lista de productos -->
+        <div class="bg-white rounded-lg shadow overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for producto in productos %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ producto.codigo }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ producto.nombre }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ producto.categoria }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                       {% if producto.stock <= producto.stock_minimo %}
+                                       bg-red-100 text-red-800
+                                       {% else %}
+                                       bg-green-100 text-green-800
+                                       {% endif %}">
+                                {{ producto.stock }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">${{ "%.2f"|format(producto.precio) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <button class="text-blue-600 hover:text-blue-900 mr-2">Editar</button>
+                            <button class="text-red-600 hover:text-red-900"
+                                    onclick="eliminarProducto({{ producto.id }})">
+                                Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function eliminarProducto(id) {
+            if (confirm('¿Está seguro de que desea eliminar este producto?')) {
+                fetch(`/producto/${id}`, {
+                    method: 'DELETE',
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        }
+    </script>
+</body>
+</html>
