@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g
-from datetime import datetime
+from datetime import datetime, timedelta
 from models import Usuario, Producto, Cliente, Venta, ItemVenta, LogAuditoria, Proveedor
 from session_manager import SessionManager, login_required, role_required
 from werkzeug.security import generate_password_hash
@@ -301,7 +301,7 @@ def gestionar_clientes():
                 accion="crear",
                 tabla="clientes",
                 registro_id=cliente.id,
-                datos_nuevos=cliente.dict(),
+                datos_nuevos=cliente.to_dict(),
                 ip=request.remote_addr if request.remote_addr else "127.0.0.1"
             )
             logs_auditoria.append(log)
@@ -311,7 +311,51 @@ def gestionar_clientes():
             flash(f'Error al agregar cliente: {str(e)}', 'error')
         return redirect(url_for('gestionar_clientes'))
     
-    return render_template('clientes.html', clientes=clientes)
+    # Convertir los clientes a diccionarios para JSON
+    clientes_json = [cliente.to_dict() for cliente in clientes]
+    
+    # Calcular estadísticas
+    total_clientes = len(clientes)
+    
+    # Calcular clientes activos (con ventas en los últimos 30 días)
+    fecha_actual = datetime.now()
+    fecha_limite = fecha_actual - timedelta(days=30)
+    clientes_activos = sum(1 for venta in ventas if venta.fecha >= fecha_limite)
+    
+    # Calcular total de ventas
+    total_ventas = sum(venta.total for venta in ventas)
+    
+    # Calcular promedio por cliente
+    promedio_por_cliente = total_ventas / total_clientes if total_clientes > 0 else 0.0
+    
+    return render_template('clientes.html',
+                         clientes=clientes,
+                         clientes_json=clientes_json,
+                         total_clientes=total_clientes,
+                         clientes_activos=clientes_activos,
+                         total_ventas=total_ventas,
+                         promedio_por_cliente=promedio_por_cliente,
+                         current_datetime=datetime.now(),
+                         current_username=SessionManager.get_current_username())
+    
+@app.route('/cliente/<int:id>', methods=['GET'])
+@login_required
+@role_required(['admin', 'vendedor'])
+def ver_cliente(id):
+    cliente = next((c for c in clientes if c.id == id), None)
+    if cliente is None:
+        flash('Cliente no encontrado', 'error')
+        return redirect(url_for('gestionar_clientes'))
+    
+    # Obtener ventas del cliente
+    ventas_cliente = [v for v in ventas if v.cliente_id == id]
+    total_ventas_cliente = sum(v.total for v in ventas_cliente)
+    
+    return render_template('ver_cliente.html',
+                         cliente=cliente,
+                         ventas=ventas_cliente,
+                         total_ventas=total_ventas_cliente,
+                         current_datetime=datetime.now())
 
 @app.route('/ventas', methods=['GET', 'POST'])
 @login_required
@@ -678,10 +722,35 @@ if __name__ == '__main__':
     ))
     
     clientes.append(Cliente(
-        id=1,
-        nombre="Cliente Demo",
-        email="demo@example.com",
-        telefono="123456789",
+    id=1,
+    nombre="Juan Pérez",
+    email="juan@email.com",
+    telefono="555-0123",
+    direccion="Calle 123",
+    tipo_cliente="regular",
+    notas="Cliente frecuente",
+    created_by=1,
+    updated_by=1
+    ))
+    clientes.append(Cliente(
+        id=2,
+        nombre="María García",
+        email="maria@email.com",
+        telefono="555-0124",
+        direccion="Avenida 456",
+        tipo_cliente="mayorista",
+        notas="Cliente mayorista importante",
+        created_by=1,
+        updated_by=1
+    ))
+    clientes.append(Cliente(
+        id=3,
+        nombre="Carlos López",
+        email="carlos@email.com",
+        telefono="555-0125",
+        direccion="Plaza 789",
+        tipo_cliente="distribuidor",
+        notas="Distribuidor regional",
         created_by=1,
         updated_by=1
     ))

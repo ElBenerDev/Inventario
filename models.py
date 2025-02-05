@@ -40,19 +40,34 @@ class Producto(BaseModel):
     created_by: int
     updated_by: int
 
-class Cliente(BaseModel):
-    id: Optional[int] = None
-    nombre: str
-    email: Optional[str] = None
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
-    tipo_cliente: str = "regular"
-    notas: Optional[str] = None
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
-    created_by: int
-    updated_by: int
+class Cliente:
+    def __init__(self, id, nombre, email, telefono, direccion, tipo_cliente, notas, created_by, updated_by):
+        self.id = id
+        self.nombre = nombre
+        self.email = email
+        self.telefono = telefono
+        self.direccion = direccion
+        self.tipo_cliente = tipo_cliente
+        self.notas = notas
+        self.created_by = created_by
+        self.updated_by = updated_by
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'email': self.email,
+            'telefono': self.telefono,
+            'direccion': self.direccion,
+            'tipo_cliente': self.tipo_cliente,
+            'notas': self.notas,
+            'created_by': self.created_by,
+            'updated_by': self.updated_by
+        }
+
+    def dict(self):  # Método alternativo para compatibilidad
+        return self.to_dict()
+    
 class ItemVenta(BaseModel):
     producto_id: int
     cantidad: int

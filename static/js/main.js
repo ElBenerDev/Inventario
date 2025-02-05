@@ -10,10 +10,36 @@ const showNotification = (message, type = 'success') => {
     const notification = document.createElement('div');
     notification.className = `fixed top-4 right-4 p-4 rounded shadow-lg ${
         type === 'success' ? 'bg-green-500' : 'bg-red-500'
-    } text-white`;
+    } text-white z-50`;
     notification.textContent = message;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
+};
+
+// Gestión de menús y dropdowns
+const initializeMenus = () => {
+    if (window.Alpine) {
+        Alpine.store('menuState', {
+            dropdowns: {},
+            closeAll() {
+                this.dropdowns = {};
+            }
+        });
+
+        // Cerrar menús cuando se hace clic fuera
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('[x-data]')) {
+                Alpine.store('menuState').closeAll();
+            }
+        });
+
+        // Cerrar menús con ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                Alpine.store('menuState').closeAll();
+            }
+        });
+    }
 };
 
 // Funciones para productos
@@ -92,8 +118,11 @@ const validateForm = (formData) => {
     return errors;
 };
 
-// Event Listeners
+// Inicialización cuando el DOM está listo
 document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar menús
+    initializeMenus();
+
     // Inicializar eventos para productos existentes en ventas
     document.querySelectorAll('.producto-item').forEach(item => {
         const productoSelect = item.querySelector('.producto-select');
@@ -120,13 +149,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Inicializar datepickers si existen
-    const datepickers = document.querySelectorAll('.datepicker');
-    if (datepickers.length > 0) {
-        datepickers.forEach(datepicker => {
-            // Aquí puedes inicializar tu biblioteca de datepicker preferida
+    // Manejar formularios
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            }
         });
-    }
+    });
+
+    // Inicializar tooltips
+    const tooltips = document.querySelectorAll('[data-tooltip]');
+    tooltips.forEach(tooltip => {
+        tooltip.addEventListener('mouseenter', (e) => {
+            const tip = document.createElement('div');
+            tip.className = 'absolute bg-gray-800 text-white px-2 py-1 rounded text-sm -mt-8 -ml-2 z-50';
+            tip.textContent = e.target.dataset.tooltip;
+            e.target.appendChild(tip);
+        });
+        tooltip.addEventListener('mouseleave', (e) => {
+            const tip = e.target.querySelector('div');
+            if (tip) tip.remove();
+        });
+    });
+
+    // Configurar observador de cambios para elementos dinámicos
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length) {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1) { // ELEMENT_NODE
+                        // Reinicializar funcionalidades para nuevos elementos
+                        const newItems = node.querySelectorAll('.producto-item');
+                        if (newItems.length) {
+                            newItems.forEach(item => {
+                                // Reinicializar eventos
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
 });
 
 // Exportar funciones para uso global
@@ -134,3 +205,4 @@ window.deleteProduct = deleteProduct;
 window.showNotification = showNotification;
 window.updateTotals = updateTotals;
 window.validateForm = validateForm;
+window.formatCurrency = formatCurrency;
