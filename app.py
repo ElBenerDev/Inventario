@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, g
 from datetime import datetime
-from models import Usuario, Producto, Cliente, Venta, ItemVenta, LogAuditoria
+from models import Usuario, Producto, Cliente, Venta, ItemVenta, LogAuditoria, Proveedor
 from session_manager import SessionManager, login_required, role_required
 from werkzeug.security import generate_password_hash
 from notifications import NotificationSystem
-from models import Proveedor
+from services.audit import AuditoriaService
+from services.proveedor_service import ProveedorService
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_del_sistema'  # Cambiar en producción
@@ -18,6 +19,11 @@ ventas = []
 logs_auditoria = []
 notification_system = NotificationSystem()
 proveedores = []
+
+
+# Inicializar servicios
+auditoria_service = AuditoriaService()
+proveedor_service = ProveedorService(auditoria_service)
 
 # Crear usuario admin inicial
 admin_user = Usuario(
@@ -34,6 +40,8 @@ admin_user = Usuario(
 )
 usuarios.append(admin_user)
 
+
+
 @app.context_processor
 def utility_processor():
     def get_unread_notifications():
@@ -41,14 +49,25 @@ def utility_processor():
             return notification_system.get_user_notifications(SessionManager.get_current_user_id())
         return []
     
+    def format_datetime(dt):
+        return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ''
+    
     return {
         'get_current_username': SessionManager.get_current_username,
         'get_current_user_role': SessionManager.get_current_user_role,
         'get_current_user_id': SessionManager.get_current_user_id,
         'notification_system': notification_system,
-        'get_unread_notifications': get_unread_notifications
+        'get_unread_notifications': get_unread_notifications,
+        'format_datetime': format_datetime,
+        'current_datetime': datetime.utcnow()
     }
 
+@app.before_request
+def before_request():
+    g.user = None
+    user_id = SessionManager.get_current_user_id()
+    if user_id:
+        g.user = next((u for u in usuarios if u.id == user_id), None)
 
 @app.route('/notificaciones')
 @login_required
@@ -369,62 +388,44 @@ def gestionar_ventas():
 def gestionar_proveedores():
     if request.method == 'POST':
         try:
-            # Obtener el usuario actual
             current_user_id = SessionManager.get_current_user_id()
+            username = SessionManager.get_current_username()
             
-            # Generar código único para el proveedor (PRV001, PRV002, etc.)
-            nuevo_codigo = f"PRV{str(len(proveedores) + 1).zfill(3)}"
+            datos_proveedor = {
+                'nombre': request.form['nombre'],
+                'ruc': request.form['ruc'],
+                'direccion': request.form['direccion'],
+                'ciudad': request.form['ciudad'],
+                'pais': request.form.get('pais', 'Ecuador'),
+                'telefono': request.form['telefono'],
+                'email': request.form['email'],
+                'sitio_web': request.form.get('sitio_web'),
+                'contacto_nombre': request.form['contacto_nombre'],
+                'contacto_telefono': request.form['contacto_telefono'],
+                'contacto_email': request.form['contacto_email'],
+                'categoria': request.form['categoria'],
+                'notas': request.form.get('notas'),
+                'terminos_pago': request.form['terminos_pago'],
+                'limite_credito': float(request.form.get('limite_credito', 0))
+            }
             
-            # Crear nuevo proveedor
-            nuevo_proveedor = Proveedor(
-                id=len(proveedores) + 1,
-                codigo=nuevo_codigo,
-                nombre=request.form['nombre'],
-                ruc=request.form['ruc'],
-                direccion=request.form['direccion'],
-                ciudad=request.form['ciudad'],
-                pais=request.form.get('pais', 'Ecuador'),
-                telefono=request.form['telefono'],
-                email=request.form['email'],
-                sitio_web=request.form.get('sitio_web'),
-                contacto_nombre=request.form['contacto_nombre'],
-                contacto_telefono=request.form['contacto_telefono'],
-                contacto_email=request.form['contacto_email'],
-                categoria=request.form['categoria'],
-                notas=request.form.get('notas'),
-                terminos_pago=request.form['terminos_pago'],
-                limite_credito=float(request.form.get('limite_credito', 0)),
-                created_by=current_user_id,
-                updated_by=current_user_id
-            )
-            
-            # Agregar a la lista de proveedores
-            proveedores.append(nuevo_proveedor)
-            
-            # Registrar en el log de auditoría
-            log = LogAuditoria(
+            proveedor = proveedor_service.crear_proveedor(
+                datos=datos_proveedor,
                 usuario_id=current_user_id,
-                accion="crear",
-                tabla="proveedores",
-                registro_id=nuevo_proveedor.id,
-                datos_nuevos=nuevo_proveedor.dict(),
+                username=username,
                 ip=request.remote_addr
             )
-            logs_auditoria.append(log)
             
             flash('Proveedor agregado exitosamente', 'success')
             return redirect(url_for('gestionar_proveedores'))
             
-        except ValueError as e:
-            flash(f'Error de validación: {str(e)}', 'error')
-            return redirect(url_for('gestionar_proveedores'))
         except Exception as e:
             flash(f'Error al crear proveedor: {str(e)}', 'error')
             return redirect(url_for('gestionar_proveedores'))
     
     # Para solicitudes GET
     return render_template('proveedores/index.html', 
-                         proveedores=proveedores,
+                         proveedores=proveedor_service.proveedores,
                          categorias_proveedores=[
                              "Materia Prima",
                              "Suministros",
@@ -650,12 +651,15 @@ def buscar_proveedores():
 def ver_logs():
     return render_template('logs.html', logs=logs_auditoria, usuarios=usuarios)
 
-@app.context_processor
-def utility_processor():
-    return {
-        'get_current_username': SessionManager.get_current_username,
-        'get_current_user_role': SessionManager.get_current_user_role
-    }
+
+def format_currency(value):
+    return f"${value:,.2f}"
+
+def format_datetime(dt):
+    return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ''
+
+app.jinja_env.filters['currency'] = format_currency
+app.jinja_env.filters['datetime'] = format_datetime
 
 if __name__ == '__main__':
     # Agregar datos de ejemplo
@@ -681,5 +685,25 @@ if __name__ == '__main__':
         created_by=1,
         updated_by=1
     ))
+    
+    # Agregar un proveedor de ejemplo
+    proveedor_service.crear_proveedor(
+        datos={
+            'nombre': 'Proveedor Demo',
+            'ruc': '1234567890001',
+            'direccion': 'Dirección Demo',
+            'ciudad': 'Ciudad Demo',
+            'telefono': '123456789',
+            'email': 'proveedor@demo.com',
+            'contacto_nombre': 'Contacto Demo',
+            'contacto_telefono': '987654321',
+            'contacto_email': 'contacto@demo.com',
+            'categoria': 'Materia Prima',
+            'terminos_pago': '30 días'
+        },
+        usuario_id=1,
+        username='ElBenerDev',
+        ip='127.0.0.1'
+    )
     
     app.run(debug=True)

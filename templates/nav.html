@@ -3,62 +3,130 @@
         <div class="flex items-center justify-between h-16">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
-                    <span class="text-white font-bold">Sistema de Inventario</span>
+                    <img class="h-8 w-8" src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
                 </div>
-                {% if get_current_username() %}
                 <div class="hidden md:block">
                     <div class="ml-10 flex items-baseline space-x-4">
                         <a href="{{ url_for('index') }}" 
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                           class="{% if request.endpoint == 'index' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} px-3 py-2 rounded-md text-sm font-medium">
                             Dashboard
                         </a>
+
                         {% if get_current_user_role() in ['admin', 'inventario'] %}
-                        <a href="{{ url_for('gestionar_productos') }}"
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                            Productos
-                        </a>
+                        <!-- Menú desplegable de Inventario -->
+                        <div x-data="{ open: false }" class="relative inline-block text-left">
+                            <button @click="open = !open" 
+                                    @keydown.escape="open = false"
+                                    class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium inline-flex items-center">
+                                <span>Inventario</span>
+                                <svg class="ml-2 -mr-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" 
+                                     viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="open"
+                                 x-cloak
+                                 @click.away="open = false"
+                                 class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                <div class="py-1">
+                                    <a href="{{ url_for('gestionar_productos') }}"
+                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        Productos
+                                    </a>
+                                    <a href="{{ url_for('gestionar_proveedores') }}"
+                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        Proveedores
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                         {% endif %}
+
                         {% if get_current_user_role() in ['admin', 'vendedor'] %}
                         <a href="{{ url_for('gestionar_clientes') }}"
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                           class="{% if request.endpoint == 'gestionar_clientes' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} px-3 py-2 rounded-md text-sm font-medium">
                             Clientes
                         </a>
                         <a href="{{ url_for('gestionar_ventas') }}"
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                           class="{% if request.endpoint == 'gestionar_ventas' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} px-3 py-2 rounded-md text-sm font-medium">
                             Ventas
                         </a>
                         {% endif %}
+
                         {% if get_current_user_role() == 'admin' %}
                         <a href="{{ url_for('ver_logs') }}"
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                           class="{% if request.endpoint == 'ver_logs' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} px-3 py-2 rounded-md text-sm font-medium">
                             Logs
                         </a>
                         {% endif %}
-
-                        <a href="{{ url_for('ver_notificaciones') }}" class="relative">
-                            <span class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                                Notificaciones
-                            </span>
-                            {% set unread_notifications = get_unread_notifications() %}
-                            {% if unread_notifications|length > 0 %}
-                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                {{ unread_notifications|length }}
-                            </span>
-                            {% endif %}
-                        </a>
                     </div>
                 </div>
             </div>
+
+            <!-- Notificaciones y Perfil -->
             <div class="hidden md:block">
                 <div class="ml-4 flex items-center md:ml-6">
-                    <span class="text-gray-300 mr-4">{{ get_current_username() }} ({{ get_current_user_role() }})</span>
-                    <a href="{{ url_for('logout') }}"
-                       class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                        Cerrar Sesión
-                    </a>
+                    <!-- Notificaciones -->
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click="open = !open"
+                                @keydown.escape="open = false"
+                                class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                            <i class="fas fa-bell"></i>
+                            {% set notifications = get_unread_notifications() %}
+                            {% if notifications %}
+                            <span class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                                {{ notifications|length }}
+                            </span>
+                            {% endif %}
+                        </button>
+                        <div x-show="open"
+                             x-cloak
+                             @click.away="open = false"
+                             class="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                            <div class="py-1">
+                                {% if notifications %}
+                                    {% for notification in notifications %}
+                                    <div class="px-4 py-2 text-sm text-gray-700 border-b">
+                                        {{ notification.mensaje }}
+                                        <div class="text-xs text-gray-500">
+                                            {{ notification.fecha.strftime('%Y-%m-%d %H:%M:%S') }}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="px-4 py-2 text-sm text-gray-700">
+                                        No hay notificaciones nuevas
+                                    </div>
+                                {% endif %}
+                                <a href="{{ url_for('ver_notificaciones') }}" 
+                                   class="block px-4 py-2 text-sm text-blue-600 hover:bg-gray-100">
+                                    Ver todas las notificaciones
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Usuario -->
+                    <div x-data="{ open: false }" class="ml-3 relative">
+                        <div>
+                            <button @click="open = !open"
+                                    @keydown.escape="open = false"
+                                    class="max-w-xs bg-gray-800 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                                <span class="text-gray-300 px-3 py-2">{{ get_current_username() }}</span>
+                            </button>
+                        </div>
+                        <div x-show="open"
+                             x-cloak
+                             @click.away="open = false"
+                             class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5">
+                            <a href="{{ url_for('logout') }}" 
+                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                Cerrar Sesión
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 </nav>
